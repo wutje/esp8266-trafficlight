@@ -40,13 +40,17 @@ static esp_err_t status_get_handler(httpd_req_t *req)
         }
     }
 
-    static char resp_str[1024];
-    snprintf(resp_str, sizeof(resp_str),
+    httpd_resp_send_chunk(req, 
         "<head>"
         "These are the states:</br>"
-        "<a href='/?s=succes'>Succes</a></br>"
         "<a href='/?s=failure'>Failure</a></br>"
-        "<a href='/?s=building'>Building</a></br>"
+        "<a href='/?s=building'>Building</a></br>",
+        "<a href='/?s=succes'>Succes</a></br>"
+        -1);
+
+    if(0)
+    {
+        httpd_resp_send_chunk(req, 
         "<a href='/?s=0'> Led 0 </a></br>"
         "<a href='/?s=1'> Led 1 </a></br>"
         "<a href='/?s=2'> Led 2 </a></br>"
@@ -56,29 +60,40 @@ static esp_err_t status_get_handler(httpd_req_t *req)
         "<a href='/?s=6'> Led 6 </a></br>"
         "<a href='/?s=7'> Led 7 </a></br>"
         "<a href='/?s=8'> Led 8 </a></br>"
-        "<a href='/?s=9'> Led 9 </a></br>"
-        "%s"
-        "</head>", param);
-    httpd_resp_send(req, resp_str, -1);
-    if(strncmp(param, "succes", sizeof(param)) == 0)
-    {
-        led_set_mask(1<<FRONT_GREEN | 1<<REAR_GREEN);
+        "<a href='/?s=9'> Led 9 </a></br>",
+        -1);
+
+        int digit = param[0];
+        if(isdigit(digit))
+        {
+            led_set(digit - '0');
+        }
     }
-    else if(strncmp(param, "failure", sizeof(param)) == 0)
-    {
-        led_set_mask(1<<FRONT_RED | 1<<REAR_RED);
-    }
-    else if(strncmp(param, "building", sizeof(param)) == 0)
-    {
-        led_set_mask(1<<FRONT_ORANGE | 1<<REAR_ORANGE);
+    else {
+        if(strlen(param) > 0)
+        {
+            char resp_str[60];
+            size_t len = snprintf(resp_str, sizeof(resp_str),
+                    "Current mode = %s</br>", param);
+            httpd_resp_send_chunk(req, resp_str, len);
+            if(strncmp(param, "succes", sizeof(param)) == 0)
+            {
+                led_set_mask(1<<FRONT_GREEN | 1<<REAR_GREEN);
+            }
+            else if(strncmp(param, "failure", sizeof(param)) == 0)
+            {
+                led_set_mask(1<<FRONT_RED | 1<<REAR_RED);
+            }
+            else if(strncmp(param, "building", sizeof(param)) == 0)
+            {
+                led_set_mask(1<<FRONT_ORANGE | 1<<REAR_ORANGE);
+            }
+        }
     }
 
-    int digit = param[0];
-    if(isdigit(digit))
-    {
-        led_set(digit - '0');
-    }
-
+    /* Finish up */
+    httpd_resp_send_chunk(req, "</head>", -1);
+    httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
 
