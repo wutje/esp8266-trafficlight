@@ -109,7 +109,7 @@ static const gpio_config_t gpio_cfg =
         (1<<GPIO_NUM_3) |
         (1<<GPIO_NUM_4) |
         (1<<GPIO_NUM_5) |
-        /* 6 to 11 are used by the SPI. Cannot not use them */
+        /* 6 to 11 are used by the SPI. Cannot use them */
         (1<<GPIO_NUM_12)|
         (1<<GPIO_NUM_13)|
         (1<<GPIO_NUM_14)|
