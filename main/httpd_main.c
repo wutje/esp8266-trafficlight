@@ -41,11 +41,16 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     }
 
     httpd_resp_send_chunk(req, 
+        "<html>"
         "<head>"
+        "<style>"
+        "</style>"
+        "</head>"
+        "<body>"
         "These are the states:</br>"
         "<a href='/?s=failure'>Failure</a></br>"
-        "<a href='/?s=building'>Building</a></br>",
-        "<a href='/?s=succes'>Succes</a></br>"
+        "<a href='/?s=building'>Building</a></br>"
+        "<a href='/?s=succes'>Succes</a></br>",
         -1);
 
     if(0)
@@ -92,7 +97,10 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     }
 
     /* Finish up */
-    httpd_resp_send_chunk(req, "</head>", -1);
+    httpd_resp_send_chunk(req, 
+            "</body>"
+            "</html>"
+            , -1);
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
 }
