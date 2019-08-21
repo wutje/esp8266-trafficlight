@@ -33,14 +33,14 @@ static const char TAG[]="WEB";
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
     char query[32]; /* We only require short queries */
-    char param[16] = ""; 
+    char param[16] = "";
     if (httpd_req_get_url_query_str(req, query, sizeof(query) - 1) == ESP_OK) {
         if (httpd_query_key_value(query, "s", param, sizeof(param)) == ESP_OK) {
             ESP_LOGI(TAG, "Found URL query parameter => s=%s", param);
         }
     }
 
-    httpd_resp_send_chunk(req, 
+    httpd_resp_send_chunk(req,
         "<html>"
         "<head>"
         "<style>"
@@ -69,7 +69,7 @@ static esp_err_t status_get_handler(httpd_req_t *req)
 
     if(0)
     {
-        httpd_resp_send_chunk(req, 
+        httpd_resp_send_chunk(req,
         "<a href='/?s=0'> Led 0 </a></br>"
         "<a href='/?s=1'> Led 1 </a></br>"
         "<a href='/?s=2'> Led 2 </a></br>"
@@ -111,7 +111,7 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     }
 
     /* Finish up */
-    httpd_resp_send_chunk(req, 
+    httpd_resp_send_chunk(req,
             "</body>"
             "</html>"
             , -1);
@@ -158,6 +158,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
         ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
+        if(ESP_OK != tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "trafficlight"))
+        {
+            ESP_LOGE(TAG, "Settings hostname failed");
+            /**/
+        }
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
