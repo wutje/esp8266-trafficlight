@@ -12,6 +12,7 @@
 #include <esp_system.h>
 //#include <nvs_flash.h>
 #include <sys/param.h>
+#include "lwip/apps/sntp.h"
 
 #include <esp_http_server.h>
 #include "led.h"
@@ -34,9 +35,10 @@ static esp_err_t status_get_handler(httpd_req_t *req)
 {
     char query[32]; /* We only require short queries */
     char param[16] = "";
+    char resp_str[60];
     if (httpd_req_get_url_query_str(req, query, sizeof(query) - 1) == ESP_OK) {
         if (httpd_query_key_value(query, "s", param, sizeof(param)) == ESP_OK) {
-            ESP_LOGI(TAG, "Found URL query parameter => s=%s", param);
+            ESP_LOGV(TAG, "Found URL query parameter => s=%s", param);
         }
     }
 
@@ -58,13 +60,15 @@ static esp_err_t status_get_handler(httpd_req_t *req)
         "</style>"
         "</head>"
         "<body>"
+        "<div style='text-align:left;display:inline-block;min-width:340px;'>"
         "These are the states:</br>"
         "<button class='button btn_failure'>Failure</button></br>"
         "<button class='button btn_building'>Building</button></br>"
         "<button class='button btn_succes'>Succes</button></br>"
         "<a href='/?s=failure'>Failure</a></br>"
         "<a href='/?s=building'>Building</a></br>"
-        "<a href='/?s=succes'>Succes</a></br>",
+        "<a href='/?s=succes'>Succes</a></br>"
+        "<a href='/?s=off'>Off</a></br>",
         -1);
 
     if(0)
@@ -91,27 +95,45 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     else {
         if(strlen(param) > 0)
         {
-            char resp_str[60];
             size_t len = snprintf(resp_str, sizeof(resp_str),
                     "Current mode = %s</br>", param);
             httpd_resp_send_chunk(req, resp_str, len);
             if(strncmp(param, "succes", sizeof(param)) == 0)
             {
-                led_set_mask(1<<FRONT_GREEN | 1<<REAR_GREEN);
+                led_set_state(LED_STATE_SUCCES);
             }
             else if(strncmp(param, "failure", sizeof(param)) == 0)
             {
-                led_set_mask(1<<FRONT_RED | 1<<REAR_RED);
+                led_set_state(LED_STATE_FAILURE);
             }
             else if(strncmp(param, "building", sizeof(param)) == 0)
             {
-                led_set_mask(1<<FRONT_ORANGE | 1<<REAR_ORANGE);
+                led_set_state(LED_STATE_BUILDING);
+            }
+            else if(strncmp(param, "off", sizeof(param)) == 0)
+            {
+                led_all_off();
             }
         }
     }
 
+    {
+        time_t now;
+        struct tm timeinfo;
+
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        strftime(resp_str, sizeof(resp_str), "%c", &timeinfo);
+        httpd_resp_send_chunk(req, "Time is: ", -1);
+        httpd_resp_send_chunk(req, resp_str,  -1);
+        httpd_resp_send_chunk(req, "</br>",  -1);
+
+        snprintf(resp_str, sizeof(resp_str), "Heap size: %d </br>", esp_get_free_heap_size());
+        httpd_resp_send_chunk(req, resp_str,  -1);
+    }
     /* Finish up */
     httpd_resp_send_chunk(req,
+            "</div>"
             "</body>"
             "</html>"
             , -1);
@@ -158,11 +180,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
         ESP_LOGI(TAG, "SYSTEM_EVENT_STA_START");
-        if(ESP_OK != tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "trafficlight"))
-        {
-            ESP_LOGE(TAG, "Settings hostname failed");
-            /**/
-        }
+        ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "trafficlight"));
         ESP_ERROR_CHECK(esp_wifi_connect());
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
@@ -212,6 +230,15 @@ static void initialise_wifi(void *arg)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+    /* Setup SNTP */
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+
+    // Set timezone to UTC
+    setenv("TZ", "UTC", 1);
+    tzset();
 }
 
 
